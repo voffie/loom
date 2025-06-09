@@ -3,10 +3,11 @@ import { Effect } from "effect";
 import { NodeContext, NodeRuntime } from "@effect/platform-node";
 
 import { init } from "./commands/init";
+import { install } from "./commands/install";
 
 const loomCommand = Command.make("loom", {}, () =>
 	Effect.succeed(undefined),
-).pipe(Command.withSubcommands([init]));
+).pipe(Command.withSubcommands([init, install]));
 
 const cli = Command.run(loomCommand, {
 	name: "Loom",
