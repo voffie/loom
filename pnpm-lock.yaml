@@ -14,6 +14,9 @@ importers:
       '@effect/platform-node':
         specifier: ^0.85.11
         version: 0.85.11(@effect/cluster@0.38.11(@effect/platform@0.84.9(effect@3.16.5))(@effect/rpc@0.61.10(@effect/platform@0.84.9(effect@3.16.5))(effect@3.16.5))(@effect/sql@0.37.10(@effect/experimental@0.48.10(@effect/platform@0.84.9(effect@3.16.5))(effect@3.16.5))(@effect/platform@0.84.9(effect@3.16.5))(effect@3.16.5))(@effect/workflow@0.1.9(@effect/platform@0.84.9(effect@3.16.5))(@effect/rpc@0.61.10(@effect/platform@0.84.9(effect@3.16.5))(effect@3.16.5))(effect@3.16.5))(effect@3.16.5))(@effect/platform@0.84.9(effect@3.16.5))(@effect/rpc@0.61.10(@effect/platform@0.84.9(effect@3.16.5))(effect@3.16.5))(@effect/sql@0.37.10(@effect/experimental@0.48.10(@effect/platform@0.84.9(effect@3.16.5))(effect@3.16.5))(@effect/platform@0.84.9(effect@3.16.5))(effect@3.16.5))(effect@3.16.5)
+      '@iarna/toml':
+        specifier: ^2.2.5
+        version: 2.2.5
       effect:
         specifier: ^3.16.5
         version: 3.16.5
@@ -122,6 +125,9 @@ packages:
       '@effect/platform': ^0.84.9
       '@effect/rpc': ^0.61.10
       effect: ^3.16.5
+
+  '@iarna/toml@2.2.5':
+    resolution: {integrity: sha512-trnsAYxU3xnS1gPHPyU961coFyLkh4gAD/0zQ5mymY4yOZ+CYvsPqUbOFSw0aDM4y0tV7tiFxL/1XfXPNC6IPg==}
 
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.3':
     resolution: {integrity: sha512-QZHtlVgbAdy2zAqNA9Gu1UpIuI8Xvsd1v8ic6B2pZmeFnFcMWiPLfWXh7TVw4eGEZ/C9TH281KwhVoeQUKbyjw==}
@@ -458,6 +464,8 @@ snapshots:
       '@effect/platform': 0.84.9(effect@3.16.5)
       '@effect/rpc': 0.61.10(@effect/platform@0.84.9(effect@3.16.5))(effect@3.16.5)
       effect: 3.16.5
+
+  '@iarna/toml@2.2.5': {}
 
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.3':
     optional: true

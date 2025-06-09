@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "",
   "license": "MIT",
-  "module": "src/index.ts",
+  "module": "src/main.ts",
   "type": "module",
   "scripts": {
     "typecheck": "tsc"
@@ -11,6 +11,7 @@
   "dependencies": {
     "@effect/cli": "^0.63.9",
     "@effect/platform-node": "^0.85.11",
+    "@iarna/toml": "^2.2.5",
     "effect": "^3.16.5"
   },
   "devDependencies": {
