@@ -1,0 +1,21 @@
+{
+  "name": "loom",
+  "version": "0.0.1",
+  "description": "",
+  "license": "MIT",
+  "module": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@effect/cli": "^0.63.9",
+    "@effect/platform-node": "^0.85.11",
+    "effect": "^3.16.5"
+  },
+  "devDependencies": {
+    "@effect/language-service": "^0.17.1",
+    "@types/node": "^22.15.18",
+    "typescript": "^5.8.3"
+  }
+}
