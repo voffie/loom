@@ -1,43 +1,23 @@
 import { Command } from "@effect/cli";
 import { Console, Effect } from "effect";
 import fs from "node:fs/promises";
-import path from "node:path";
+import { DOTFILES_ROOT, CONFIG_PATH } from "../utils/fs";
+import { MakeDirectoryError, WriteFileError } from "../errors";
 
 export const init = Command.make("init", {}, () => execute());
 
 function execute() {
-	const home = process.env.HOME ?? "~";
-	const resolved = "~/.dotfiles".replace(/^~(?=$|\/)/, home);
-	const loomTomlPath = path.join(resolved, "loom.toml");
-
 	return Effect.gen(function* () {
 		yield* Effect.tryPromise({
-			try: () => fs.mkdir(resolved, { recursive: true }),
-			catch: (err) => new Error(`Failed to create directory ${err}`),
+			try: () => fs.mkdir(DOTFILES_ROOT, { recursive: true }),
+			catch: (cause) => new MakeDirectoryError({ path: DOTFILES_ROOT, cause }),
 		});
 
 		yield* Effect.tryPromise({
-			try: () =>
-				fs.writeFile(loomTomlPath, generateExampleToml(), { flag: "wx" }),
-			catch: (err) =>
-				new Error(`Failed to write loom.toml (it might already exist): ${err}`),
+			try: () => fs.writeFile(CONFIG_PATH, "", { flag: "wx" }),
+			catch: (cause) => new WriteFileError({ path: CONFIG_PATH, cause }),
 		});
 
-		return yield* Console.log(`Initialized Loom at ${resolved}`);
+		return yield* Console.log(`Initialized Loom at ${DOTFILES_ROOT}`);
 	});
-}
-
-function generateExampleToml() {
-	return `
-[settings]
-dotfiles_dir = "~/.dotfiles"
-
-[nvim]
-source = "nvim-lua/kickstart.nvim"
-target = "~/.config/nvim"
-
-[zsh]
-source = "~/dev/zsh-config"
-target = "~/.zshrc"
-`.trimStart();
 }
