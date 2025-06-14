@@ -49,10 +49,13 @@ function cloneGitRepo(source: string, as: string) {
 	const targetPath = path.join(DOTFILES_ROOT, as);
 
 	return Effect.tryPromise({
-		try: () => EXEC(`git clone https://github.com/${source}.git ${targetPath}`),
+		try: () =>
+			EXEC(
+				`git clone --depth 1 https://github.com/${source}.git ${targetPath}`,
+			),
 		catch: (cause) =>
 			new ExecCommandError({
-				command: `git clone https://github.com/${source}.git ${targetPath}`,
+				command: `git clone --depth 1 https://github.com/${source}.git ${targetPath}`,
 				cause,
 			}),
 	});
