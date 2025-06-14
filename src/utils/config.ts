@@ -10,6 +10,7 @@ import {
 	WriteFileError,
 } from "../errors";
 import { coloredText } from "./color";
+import type { LoomConfig } from "../types/types";
 
 export function readConfig() {
 	return Effect.gen(function* () {
@@ -19,7 +20,7 @@ export function readConfig() {
 			catch: (cause) => new ReadFileError({ path: CONFIG_PATH, cause }),
 		});
 
-		return TOML.parse(contents.toString());
+		return TOML.parse(contents.toString()) as LoomConfig;
 	});
 }
 

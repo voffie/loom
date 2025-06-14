@@ -68,3 +68,23 @@ export function removeDotfileEntry(name: string) {
 		});
 	});
 }
+
+export function symlinkEntry(pointer: string, symlink: string) {
+	return Effect.tryPromise({
+		try: () => fs.symlink(pointer, symlink),
+		catch: (cause) =>
+			Console.log(
+				coloredText(`Failed to create symlink '${symlink}':\n${cause}`, "red"),
+			),
+	});
+}
+
+export function unsymlinkEntry(symlink: string) {
+	return Effect.tryPromise({
+		try: () => fs.unlink(symlink),
+		catch: (cause) =>
+			Console.log(
+				coloredText(`Failed to unlink symlink '${symlink}': ${cause}`, "red"),
+			),
+	});
+}
