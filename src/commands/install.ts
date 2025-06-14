@@ -1,15 +1,11 @@
+import path from "node:path";
 import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect } from "effect";
-import {
-	isLocalPath,
-	DOTFILES_ROOT,
-	expandPath,
-	addLocalEntry,
-} from "../utils/fs";
-import { writeEntry } from "../utils/config";
-import path from "node:path";
 import { EXEC } from "../utils/exec";
 import { ExecCommandError } from "../errors";
+import { isLocalPath, DOTFILES_ROOT, addLocalEntry, HOME } from "../utils/fs";
+import { writeEntry } from "../utils/config";
+import { coloredText } from "../utils/color";
 
 const source = Args.text({ name: "source" });
 const as = Options.text("as");
@@ -26,14 +22,26 @@ function execute(source: string, as: string) {
 		yield* writeEntry(source, as, isLocal);
 
 		if (isLocal) {
-			yield* Console.log(`Detected local source: ${expandPath(source)}`);
+			yield* Console.log(
+				coloredText(
+					`Detected local source: ${path.resolve(HOME, source)}`,
+					"magenta",
+				),
+			);
 			yield* addLocalEntry(source, as);
 		} else {
-			yield* Console.log(`Cloning git repo: https://github.com/${source}`);
+			yield* Console.log(
+				coloredText(
+					`Cloning git repo: https://github.com/${source}`,
+					"magenta",
+				),
+			);
 			yield* cloneGitRepo(source, as);
 		}
 
-		return yield* Console.log(`Installed ${source} as ${as}`);
+		return yield* Console.log(
+			coloredText(`Installed ${source} as ${as}`, "green"),
+		);
 	});
 }
 
