@@ -3,9 +3,10 @@ import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect } from "effect";
 import { EXEC } from "../utils/exec";
 import { ExecCommandError } from "../errors";
-import { isLocalPath, DOTFILES_ROOT, addLocalEntry, HOME } from "../utils/fs";
+import { isLocalPath, DOTFILES_ROOT, addLocalEntry } from "../utils/fs";
 import { writeEntry } from "../utils/config";
-import { coloredText } from "../utils/color";
+import { formatText, LogStyles } from "../utils/log";
+import { taskUI } from "../utils/ui";
 
 const source = Args.text({ name: "source" });
 const as = Options.text("as");
@@ -17,30 +18,27 @@ export const install = Command.make(
 
 function execute(source: string, as: string) {
 	return Effect.gen(function* () {
+		yield* Console.log(
+			formatText(`Installing '${source}' as: '${as}'`, { bold: true }),
+		);
 		const isLocal = yield* isLocalPath(source);
 
 		yield* writeEntry(source, as, isLocal);
 
+		const fetchId = taskUI.start(`Fetching: '${source}'`);
 		if (isLocal) {
-			yield* Console.log(
-				coloredText(
-					`Detected local source: ${path.resolve(HOME, source)}`,
-					"magenta",
-				),
-			);
+			const localId = taskUI.start("Move local instance", fetchId);
 			yield* addLocalEntry(source, as);
+			taskUI.complete(localId);
 		} else {
-			yield* Console.log(
-				coloredText(
-					`Cloning git repo: https://github.com/${source}`,
-					"magenta",
-				),
-			);
+			const remoteId = taskUI.start("Clone remote instance", fetchId);
 			yield* cloneGitRepo(source, as);
+			taskUI.complete(remoteId);
 		}
 
-		return yield* Console.log(
-			coloredText(`Installed ${source} as ${as}`, "green"),
+		taskUI.complete(fetchId);
+		taskUI.logFinalMessage(
+			LogStyles.success(`Successfully installed '${source}' as '${as}'`),
 		);
 	});
 }

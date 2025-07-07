@@ -1,4 +1,4 @@
-import { Console, Effect } from "effect";
+import { Effect } from "effect";
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
@@ -7,7 +7,6 @@ import {
 	ReadDirectoriesError,
 	RemoveEntryError,
 } from "../errors";
-import { coloredText } from "./color";
 
 export const HOME = process.env.HOME ?? "~";
 export const DOTFILES_ROOT = path.resolve(HOME, ".dotfiles");
@@ -38,10 +37,6 @@ export function addLocalEntry(source: string, as: string) {
 			catch: (cause) =>
 				new MoveEntryError({ from: oldPath, to: newPath, cause }),
 		});
-
-		yield* Console.log(
-			coloredText(`Moved local entry from ${oldPath} to ${newPath}`, "blue"),
-		);
 	});
 }
 
@@ -60,8 +55,6 @@ export function removeDotfileEntry(name: string) {
 	const entryPath = path.join(DOTFILES_ROOT, name);
 
 	return Effect.gen(function* () {
-		yield* Console.log(coloredText(`Removing entry for ${name}`, "blue"));
-
 		yield* Effect.tryPromise({
 			try: () => fs.rm(entryPath, { recursive: true }),
 			catch: (cause) => new RemoveEntryError({ path: entryPath, cause }),
@@ -73,9 +66,7 @@ export function symlinkEntry(pointer: string, symlink: string) {
 	return Effect.tryPromise({
 		try: () => fs.symlink(pointer, symlink),
 		catch: (cause) =>
-			Console.log(
-				coloredText(`Failed to create symlink '${symlink}':\n${cause}`, "red"),
-			),
+			Effect.fail(`Failed to create symlink '${symlink}':\n${cause}`),
 	});
 }
 
@@ -83,8 +74,6 @@ export function unsymlinkEntry(symlink: string) {
 	return Effect.tryPromise({
 		try: () => fs.unlink(symlink),
 		catch: (cause) =>
-			Console.log(
-				coloredText(`Failed to unlink symlink '${symlink}': ${cause}`, "red"),
-			),
+			Effect.fail(`Failed to unlink symlink '${symlink}': ${cause}`),
 	});
 }

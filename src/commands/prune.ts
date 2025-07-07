@@ -2,14 +2,21 @@ import { Console, Effect } from "effect";
 import { Command, Prompt } from "@effect/cli";
 import { getDotfilesEntries, removeDotfileEntry } from "../utils/fs";
 import { readConfig, writeEntry } from "../utils/config";
-import { coloredText } from "../utils/color";
+import { formatText, LogStyles } from "../utils/log";
 
 export const prune = Command.make("prune", {}, () => execute());
 
 function execute() {
 	return Effect.gen(function* () {
 		const dotfilesEntries = yield* getDotfilesEntries();
-		yield* Console.log(coloredText("Processing dotfile entries...", "cyan"));
+
+		if (dotfilesEntries.length === 0) {
+			return yield* Console.log(LogStyles.warning("No entries found"));
+		}
+
+		yield* Console.log(
+			formatText("Processing dotfile entries...", { bold: true }),
+		);
 		yield* Effect.forEach(dotfilesEntries, handleEntry);
 	});
 }
@@ -21,10 +28,10 @@ function handleEntry(entry: string) {
 			const option = yield* Prompt.run(
 				Prompt.text({
 					message:
-						`Found: "${coloredText(entry, "cyan")}", but no config entry!\n\nWhat would you like to do?\n` +
-						`${coloredText("[r] Remove", "red")}: Permanently delete "${entry}" from ~/.dotfiles\n` +
-						`${coloredText("[k] Keep", "yellow")}: Leave it alone and do nothing\n` +
-						`${coloredText("[w] Write", "green")}: Add a new config entry for "${entry}"\n\n` +
+						`Found: '${formatText(entry, { color: "magenta" })}', but no config entry!\n\nWhat would you like to do?\n` +
+						`${LogStyles.error("[r] Remove")}: Permanently delete '${entry}' from ~/.dotfiles\n` +
+						`${LogStyles.warning("[k] Keep")}: Leave it alone and do nothing\n` +
+						`${LogStyles.success("[w] Write")}: Add a new config entry for '${entry}'\n\n` +
 						`Enter your choice (r/k/w):`,
 					validate: (value) =>
 						["r", "k", "w"].includes(value.toLowerCase())
@@ -35,37 +42,32 @@ function handleEntry(entry: string) {
 
 			if (option === "r") {
 				yield* Console.log(
-					coloredText(`Removing ${entry} from ~/.dotfiles...`, "red"),
+					LogStyles.error(`Removing '${entry}' from ~/.dotfiles...`),
 				);
 				yield* removeDotfileEntry(entry);
 				yield* Console.log(
-					coloredText(
-						`Successfully removed the dotfile entry: ${entry}\n`,
-						"green",
+					LogStyles.success(
+						`Successfully removed the dotfile entry: '${entry}'\n`,
 					),
 				);
 			} else if (option === "k") {
 				yield* Console.log(
-					coloredText(
-						`Keeping ${entry}. It will remain unmanaged.\n`,
-						"yellow",
-					),
+					LogStyles.warning(`Keeping '${entry}'. It will remain unmanaged.\n`),
 				);
 			} else if (option === "w") {
-				yield* Console.log(`Writing new config entry for ${entry}...`);
+				yield* Console.log(`Writing new config entry for '${entry}'...`);
 				yield* writeEntry("", entry, true);
 				yield* Console.log(
-					coloredText(
-						`Added a config entry for: ${entry}.\n` +
+					LogStyles.success(
+						`Added a config entry for: '${entry}'.\n` +
 							"If this is a Git-managed directory, add a 'source' key to the entry using the following format:\n" +
 							'source = "[username]/[repo]"\n',
-						"green",
 					),
 				);
 			}
 		} else {
 			yield* Console.log(
-				coloredText(`Entry "${entry}" already managed. Skipping.\n`, "yellow"),
+				LogStyles.warning(`Entry '${entry}' already managed. Skipping.\n`),
 			);
 		}
 	});

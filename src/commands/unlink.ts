@@ -2,23 +2,29 @@ import { Console, Effect } from "effect";
 import { Command } from "@effect/cli";
 import { readConfig } from "../utils/config";
 import { getDotfilesEntries, unsymlinkEntry } from "../utils/fs";
-import { coloredText } from "../utils/color";
+import { LogStyles } from "../utils/log";
 import fs from "node:fs/promises";
+import { taskUI } from "../utils/ui";
 
 export const unlink = Command.make("unlink", {}, () => execute());
 
 function execute() {
 	return Effect.gen(function* () {
-		const configEntries = yield* readConfig();
-		const dotfilesEntries = yield* getDotfilesEntries();
+		const root = taskUI.start("Unlink entries");
 
+		const readConfigId = taskUI.start("Read config", root);
+		const configEntries = yield* readConfig();
+		taskUI.complete(readConfigId);
+
+		const getEntriesId = taskUI.start("Get dotfiles entries", root);
+		const dotfilesEntries = yield* getDotfilesEntries();
+		taskUI.complete(getEntriesId);
+
+		const unlinkRootId = taskUI.start("Symlink", root);
 		for (const [entry, data] of Object.entries(configEntries)) {
+			const unlinkId = taskUI.start(entry, unlinkRootId);
 			if (dotfilesEntries.includes(entry) && data.target.trim()) {
 				const symlink = data.target.trim();
-
-				yield* Console.log(
-					coloredText(`\nTrying to unlink '${symlink}'`, "magenta"),
-				);
 
 				const maybeSymlink = yield* Effect.tryPromise(() =>
 					fs.lstat(symlink),
@@ -26,7 +32,7 @@ function execute() {
 					Effect.catchAll(() =>
 						Effect.gen(function* () {
 							yield* Console.log(
-								coloredText(`Failed to locate symlink: '${symlink}'`, "red"),
+								LogStyles.error(`Failed to locate symlink '${symlink}'`),
 							);
 							return null;
 						}),
@@ -35,18 +41,18 @@ function execute() {
 
 				if (maybeSymlink && maybeSymlink.isSymbolicLink()) {
 					yield* unsymlinkEntry(symlink);
-					yield* Console.log(
-						coloredText(`Successfully unlinked: ${entry}`, "green"),
-					);
 				}
 			} else {
 				yield* Console.log(
-					coloredText(
+					LogStyles.warning(
 						`Skipping '${entry}' - missing dotfile or invalid target`,
-						"yellow",
 					),
 				);
 			}
+			taskUI.complete(unlinkId);
 		}
+		taskUI.complete(unlinkRootId);
+		taskUI.complete(root);
+		taskUI.logFinalMessage(LogStyles.success("Successfully unlinked entries"));
 	});
 }
