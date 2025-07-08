@@ -15,6 +15,10 @@ class TaskTreeUI {
 	constructor(private refreshRateMs = 100) {}
 
 	start(label: string, parent: number | null = null): number {
+		if (parent !== null && !this.nodes.has(parent)) {
+			throw new Error(`Parent task with ID ${parent} does not exist`);
+		}
+
 		if (!this.interval) {
 			this.interval = setInterval(() => this.render(), this.refreshRateMs);
 		}
@@ -25,6 +29,8 @@ class TaskTreeUI {
 	}
 
 	complete(id: number): void {
+		const children = this.getChildren(id);
+		children.forEach((child) => this.complete(child.id));
 		this.nodes.delete(id);
 	}
 
@@ -37,6 +43,11 @@ class TaskTreeUI {
 		if (this.lastRenderLineCount > 0) {
 			readline.moveCursor(process.stdout, 0, -this.lastRenderLineCount);
 			readline.clearScreenDown(process.stdout);
+		}
+
+		if (this.nodes.size === 0 && this.interval) {
+			this.stop();
+			return;
 		}
 
 		let linesRendered = 0;
@@ -66,7 +77,7 @@ class TaskTreeUI {
 			process.stdout.write(prefix + branch + node.label + "\n");
 			count += 1;
 
-			const childPrefix = prefix + (isLast ? "   " : "|  ");
+			const childPrefix = prefix + (isLast ? "   " : "│  ");
 			const children = this.getChildren(node.id);
 			count += this.renderSubtree(children, childPrefix);
 		});
