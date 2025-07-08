@@ -61,11 +61,12 @@ export function removeDotfileEntry(name: string) {
 	// Normalize and prevent path traversal
 	const entryPath = path.resolve(DOTFILES_ROOT, name);
 	const rootPath = path.resolve(DOTFILES_ROOT);
-	if (!entryPath.startsWith(rootPath + path.sep)) {
+	if (!entryPath.startsWith(rootPath + path.sep) || entryPath === rootPath) {
 		return Effect.fail(
 			new RemoveEntryError({
 				path: entryPath,
-				cause: "Invalid entry name; path traversal detected",
+				cause:
+					"Invalid entry name; path traversal detected or attempting to delete root",
 			}),
 		);
 	}
