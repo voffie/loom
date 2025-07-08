@@ -8,7 +8,7 @@ import {
 	DOTFILES_ROOT,
 	getDotfilesEntries,
 	symlinkEntry,
-	unsymlinkEntry,
+	unlinkEntry,
 } from "../utils/fs";
 import { taskUI } from "../utils/ui";
 
@@ -42,9 +42,26 @@ function execute() {
 					catch: () => false,
 				});
 
-				if (symlinkExists) yield* unsymlinkEntry(symlink);
+				if (symlinkExists)
+					yield* unlinkEntry(symlink).pipe(
+						Effect.catchAll((err) =>
+							Console.log(
+								LogStyles.error(
+									`Failed to unlink existing symlink for ${entry}: ${err}`,
+								),
+							),
+						),
+					);
 
-				yield* symlinkEntry(pointer, symlink);
+				yield* symlinkEntry(pointer, symlink).pipe(
+					Effect.catchAll((err) =>
+						Console.log(
+							LogStyles.error(
+								`Failed to create symlink for '${entry}': ${err}`,
+							),
+						),
+					),
+				);
 			} else {
 				yield* Console.log(
 					LogStyles.warning(

@@ -1,7 +1,7 @@
 import { Console, Effect } from "effect";
 import { Command } from "@effect/cli";
 import { readConfig } from "../utils/config";
-import { getDotfilesEntries, unsymlinkEntry } from "../utils/fs";
+import { getDotfilesEntries, unlinkEntry } from "../utils/fs";
 import { LogStyles } from "../utils/log";
 import fs from "node:fs/promises";
 import { taskUI } from "../utils/ui";
@@ -20,7 +20,7 @@ function execute() {
 		const dotfilesEntries = yield* getDotfilesEntries();
 		taskUI.complete(getEntriesId);
 
-		const unlinkRootId = taskUI.start("Symlink", root);
+		const unlinkRootId = taskUI.start("Unlink", root);
 		for (const [entry, data] of Object.entries(configEntries)) {
 			const unlinkId = taskUI.start(entry, unlinkRootId);
 			if (dotfilesEntries.includes(entry) && data.target.trim()) {
@@ -39,8 +39,16 @@ function execute() {
 					),
 				);
 
-				if (maybeSymlink && maybeSymlink.isSymbolicLink()) {
-					yield* unsymlinkEntry(symlink);
+				if (maybeSymlink?.isSymbolicLink()) {
+					yield* unlinkEntry(symlink).pipe(
+						Effect.catchAll((err) =>
+							Console.log(
+								LogStyles.error(
+									`Failed to unlink existing symlink for ${entry}: ${err}`,
+								),
+							),
+						),
+					);
 				}
 			} else {
 				yield* Console.log(

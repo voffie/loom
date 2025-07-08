@@ -25,12 +25,12 @@ function execute() {
 		for (const [entry, data] of Object.entries(configEntries)) {
 			const entryId = taskUI.start(entry, root);
 			if (dotfilesEntries.includes(entry) && data.source?.trim()) {
+				const entryPath = path.resolve(DOTFILES_ROOT, entry);
 				yield* Effect.tryPromise({
-					try: () =>
-						EXEC(`cd ${path.resolve(DOTFILES_ROOT, entry)} && git pull`),
+					try: () => EXEC("git pull", { cwd: entryPath }),
 					catch: (cause) =>
 						new ExecCommandError({
-							command: `cd ${path.resolve(DOTFILES_ROOT, entry)} && git pull`,
+							command: `git pull in ${entryPath}`,
 							cause,
 						}),
 				});

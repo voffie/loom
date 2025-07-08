@@ -2,8 +2,8 @@ import path from "node:path";
 import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect } from "effect";
 import { EXEC } from "../utils/exec";
-import { ExecCommandError } from "../errors";
-import { isLocalPath, DOTFILES_ROOT, addLocalEntry } from "../utils/fs";
+import { ExecCommandError, ValidationError } from "../errors";
+import { pathExists, DOTFILES_ROOT, addLocalEntry } from "../utils/fs";
 import { writeEntry } from "../utils/config";
 import { formatText, LogStyles } from "../utils/log";
 import { taskUI } from "../utils/ui";
@@ -21,7 +21,7 @@ function execute(source: string, as: string) {
 		yield* Console.log(
 			formatText(`Installing '${source}' as: '${as}'`, { bold: true }),
 		);
-		const isLocal = yield* isLocalPath(source);
+		const isLocal = yield* pathExists(source);
 
 		yield* writeEntry(source, as, isLocal);
 
@@ -44,6 +44,10 @@ function execute(source: string, as: string) {
 }
 
 function cloneGitRepo(source: string, as: string) {
+	// Validates "username/repo" format
+	if (!/^[a-zA-Z0-9-_.]+\/[a-zA-Z0-9-_.]+$/.test(source)) {
+		return Effect.fail(new ValidationError({ raw_input: source }));
+	}
 	const targetPath = path.join(DOTFILES_ROOT, as);
 
 	return Effect.tryPromise({

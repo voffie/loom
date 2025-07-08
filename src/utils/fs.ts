@@ -1,24 +1,30 @@
 import { Effect } from "effect";
 import fs from "node:fs/promises";
 import path from "node:path";
+import os from "node:os";
 import {
 	LocalPathError,
 	MoveEntryError,
 	ReadDirectoriesError,
 	RemoveEntryError,
+	SymlinkError,
+	UnlinkError,
 } from "../errors";
 
-export const HOME = process.env.HOME ?? "~";
+export const HOME = process.env.HOME ?? os.homedir();
 export const DOTFILES_ROOT = path.resolve(HOME, ".dotfiles");
 export const CONFIG_PATH = path.join(DOTFILES_ROOT, "loom.toml");
 
-export function isLocalPath(source: string) {
+export function pathExists(source: string) {
 	return Effect.tryPromise({
-		try: () =>
-			fs
-				.stat(path.resolve(HOME, source))
-				.then(() => true)
-				.catch(() => false),
+		try: async () => {
+			try {
+				await fs.stat(path.resolve(HOME, source));
+				return true;
+			} catch {
+				return false;
+			}
+		},
 		catch: (cause) =>
 			new LocalPathError({
 				path: path.resolve(HOME, source),
@@ -52,7 +58,17 @@ export function getDotfilesEntries() {
 }
 
 export function removeDotfileEntry(name: string) {
-	const entryPath = path.join(DOTFILES_ROOT, name);
+	// Normalize and prevent path traversal
+	const entryPath = path.resolve(DOTFILES_ROOT, name);
+	const rootPath = path.resolve(DOTFILES_ROOT);
+	if (!entryPath.startsWith(rootPath + path.sep)) {
+		return Effect.fail(
+			new RemoveEntryError({
+				path: entryPath,
+				cause: "Invalid entry name; path traversal detected",
+			}),
+		);
+	}
 
 	return Effect.gen(function* () {
 		yield* Effect.tryPromise({
@@ -65,15 +81,13 @@ export function removeDotfileEntry(name: string) {
 export function symlinkEntry(pointer: string, symlink: string) {
 	return Effect.tryPromise({
 		try: () => fs.symlink(pointer, symlink),
-		catch: (cause) =>
-			Effect.fail(`Failed to create symlink '${symlink}':\n${cause}`),
+		catch: (cause) => new SymlinkError({ cause, pointer, symlink }),
 	});
 }
 
-export function unsymlinkEntry(symlink: string) {
+export function unlinkEntry(symlink: string) {
 	return Effect.tryPromise({
 		try: () => fs.unlink(symlink),
-		catch: (cause) =>
-			Effect.fail(`Failed to unlink symlink '${symlink}': ${cause}`),
+		catch: (cause) => new UnlinkError({ cause, symlink }),
 	});
 }

@@ -56,13 +56,40 @@ export class LocalPathError extends Schema.TaggedError<LocalPathError>()(
 
 export class ReadDirectoriesError extends Schema.TaggedError<ReadDirectoriesError>()(
 	"ReadDirectoriesError",
-	{ path: Schema.String, cause: Schema.Unknown },
+	{
+		path: Schema.String,
+		cause: Schema.Unknown,
+	},
 ) {}
 
 export class ExecCommandError extends Schema.TaggedError<ExecCommandError>()(
 	"ExecCommandError",
 	{
 		command: Schema.String,
+		cause: Schema.Unknown,
+	},
+) {}
+
+export class ValidationError extends Schema.TaggedError<ValidationError>()(
+	"ValidationError",
+	{
+		raw_input: Schema.String,
+	},
+) {}
+
+export class SymlinkError extends Schema.TaggedError<SymlinkError>()(
+	"SymlinkError",
+	{
+		pointer: Schema.String,
+		symlink: Schema.String,
+		cause: Schema.Unknown,
+	},
+) {}
+
+export class UnlinkError extends Schema.TaggedError<UnlinkError>()(
+	"UnlinkError",
+	{
+		symlink: Schema.String,
 		cause: Schema.Unknown,
 	},
 ) {}
