@@ -10,6 +10,8 @@ import { remove } from "./commands/remove";
 import { unlink } from "./commands/unlink";
 import { update } from "./commands/update";
 
+import { version } from "../package.json";
+
 const loomCommand = Command.make("loom", {}, () =>
 	Effect.succeed(undefined),
 ).pipe(
@@ -18,7 +20,7 @@ const loomCommand = Command.make("loom", {}, () =>
 
 const cli = Command.run(loomCommand, {
 	name: "Loom",
-	version: "v0.0.1",
+	version: `v${version}`,
 });
 
 cli(process.argv).pipe(Effect.provide(NodeContext.layer), NodeRuntime.runMain);
