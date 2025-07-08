@@ -57,11 +57,12 @@ function execute() {
 			catch: (cause) => new MakeDirectoryError({ path: DOTFILES_ROOT, cause }),
 		}).pipe(
 			Effect.catchTag("MakeDirectoryError", (err) =>
-				Effect.fail(
+				Effect.gen(function* () {
 					taskUI.logFinalMessage(
-						LogStyles.error(`Creating root directory failed: ${err.message}`),
+						LogStyles.error(`Creating root directory failed: ${err.cause}`),
 					),
-				),
+						yield* Effect.fail(err);
+				}),
 			),
 		);
 		taskUI.complete(createRootId);
@@ -72,11 +73,12 @@ function execute() {
 			catch: (cause) => new WriteFileError({ path: CONFIG_PATH, cause }),
 		}).pipe(
 			Effect.catchTag("WriteFileError", (err) =>
-				Effect.fail(
+				Effect.gen(function* () {
 					taskUI.logFinalMessage(
 						LogStyles.error(`Creating config file failed: ${err.message}`),
-					),
-				),
+					);
+					yield* Effect.fail(err);
+				}),
 			),
 		);
 		taskUI.complete(createConfigId);

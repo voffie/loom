@@ -3,6 +3,7 @@ import { Command, Prompt } from "@effect/cli";
 import { getDotfilesEntries, removeDotfileEntry } from "../utils/fs";
 import { readConfig, writeEntry } from "../utils/config";
 import { formatText, LogStyles } from "../utils/log";
+import { DOTFILES_ROOT } from "../utils/fs";
 
 export const prune = Command.make("prune", {}, () => execute());
 
@@ -11,7 +12,9 @@ function execute() {
 		const dotfilesEntries = yield* getDotfilesEntries();
 
 		if (dotfilesEntries.length === 0) {
-			return yield* Console.log(LogStyles.warning("No entries found"));
+			return yield* Console.log(
+				LogStyles.warning(`No dotfile entries found in ${DOTFILES_ROOT}`),
+			);
 		}
 
 		yield* Console.log(
