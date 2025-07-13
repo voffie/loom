@@ -74,6 +74,7 @@ export class ValidationError extends Schema.TaggedError<ValidationError>()(
 	"ValidationError",
 	{
 		raw_input: Schema.String,
+		message: Schema.String,
 	},
 ) {}
 

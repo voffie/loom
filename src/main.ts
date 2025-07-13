@@ -1,6 +1,7 @@
 import { Command } from "@effect/cli";
-import { Effect } from "effect";
+import { Effect, Logger } from "effect";
 import { NodeContext, NodeRuntime } from "@effect/platform-node";
+import { logger } from "./utils/logger";
 
 import { init } from "./commands/init";
 import { install } from "./commands/install";
@@ -11,6 +12,8 @@ import { unlink } from "./commands/unlink";
 import { update } from "./commands/update";
 
 import { version } from "../package.json";
+
+const customLoggerLayer = Logger.replace(Logger.defaultLogger, logger);
 
 const loomCommand = Command.make("loom", {}, () =>
 	Effect.succeed(undefined),
@@ -23,4 +26,8 @@ const cli = Command.run(loomCommand, {
 	version: `v${version}`,
 });
 
-cli(process.argv).pipe(Effect.provide(NodeContext.layer), NodeRuntime.runMain);
+cli(process.argv).pipe(
+	Effect.provide(customLoggerLayer),
+	Effect.provide(NodeContext.layer),
+	NodeRuntime.runMain({ disablePrettyLogger: true }),
+);

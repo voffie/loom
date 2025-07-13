@@ -16,18 +16,17 @@ export const DOTFILES_ROOT = path.resolve(HOME, ".dotfiles");
 export const CONFIG_PATH = path.join(DOTFILES_ROOT, "loom.toml");
 
 export function pathExists(source: string) {
+	const absolutePath = path.resolve(HOME, source);
+
 	return Effect.tryPromise({
-		try: async () => {
-			try {
-				await fs.stat(path.resolve(HOME, source));
-				return true;
-			} catch {
-				return false;
-			}
-		},
+		try: () =>
+			fs
+				.stat(absolutePath)
+				.then(() => true)
+				.catch(() => false),
 		catch: (cause) =>
 			new LocalPathError({
-				path: path.resolve(HOME, source),
+				path: absolutePath,
 				cause,
 			}),
 	});
@@ -61,6 +60,7 @@ export function removeDotfileEntry(name: string) {
 	// Normalize and prevent path traversal
 	const entryPath = path.resolve(DOTFILES_ROOT, name);
 	const rootPath = path.resolve(DOTFILES_ROOT);
+
 	if (!entryPath.startsWith(rootPath + path.sep) || entryPath === rootPath) {
 		return Effect.fail(
 			new RemoveEntryError({
@@ -73,7 +73,7 @@ export function removeDotfileEntry(name: string) {
 
 	return Effect.gen(function* () {
 		yield* Effect.tryPromise({
-			try: () => fs.rm(entryPath, { recursive: true }),
+			try: () => fs.rm(entryPath, { recursive: true, force: true }),
 			catch: (cause) => new RemoveEntryError({ path: entryPath, cause }),
 		});
 	});

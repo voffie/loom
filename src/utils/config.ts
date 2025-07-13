@@ -1,4 +1,4 @@
-import { Console, Effect } from "effect";
+import { Effect } from "effect";
 import { Prompt } from "@effect/cli";
 import * as TOML from "@iarna/toml";
 import fs from "node:fs/promises";
@@ -9,8 +9,8 @@ import {
 	UserDeniedOverrideError,
 	WriteFileError,
 } from "../errors";
-import { formatText } from "./log";
-import type { LoomConfig } from "../types/types";
+import { formatText } from "./logger";
+import type { LoomConfig } from "../types";
 
 export function readConfig() {
 	return Effect.gen(function* () {
@@ -47,18 +47,33 @@ export function writeEntry(source: string, as: string, isLocal: boolean) {
 					};
 		} else {
 			const override = yield* Prompt.run(
-				Prompt.text({
-					message: `Found config entry for: ${formatText(as, { color: "magenta", bold: true })}!\n ${formatText("Warning", { color: "yellow" })}: This will replace the old entry with the new one\n Do you want to override the entry? ${formatText("(y/n)", { color: "red", bold: true })}`,
-					validate: (value) =>
-						["y", "n"].includes(value.toLowerCase())
-							? Effect.succeed(value.toLowerCase())
-							: Effect.fail("Invalid option. Please enter 'y' or 'n'."),
+				Prompt.select({
+					message: `
+A configuration entry for '${formatText(as, { color: "magenta", bold: true })}' already exists.
+${formatText("WARNING", { color: "yellow", bold: true })}: Proceeding will replace the existing entry and unlink its current target.
+What would you like to do?`, // Clearer question
+					choices: [
+						{
+							title: formatText("Override (replace existing entry)", {
+								color: "red",
+								bold: true,
+							}),
+							value: "y",
+						},
+						{
+							title: formatText("Cancel (keep current entry)", {
+								color: "cyan",
+								bold: true,
+							}),
+							value: "n",
+						},
+					],
 				}),
 			);
 
 			if (override === "n") {
-				yield* Console.log(
-					formatText(`Override denied. Entry ${as} was not updated.\n`, {
+				yield* Effect.logInfo(
+					formatText(`Action cancelled. Entry '${as}' was not updated.`, {
 						color: "yellow",
 						bold: true,
 					}),
@@ -66,7 +81,18 @@ export function writeEntry(source: string, as: string, isLocal: boolean) {
 				return yield* Effect.fail(new UserDeniedOverrideError());
 			}
 
-			yield* removeDotfileEntry(as);
+			yield* removeDotfileEntry(as).pipe(
+				Effect.tap(() =>
+					Effect.logInfo(
+						`  • Cleared existing dotfile for '${formatText(as, { color: "magenta" })}' before override.`,
+					),
+				),
+				Effect.catchAll((err) =>
+					Effect.logWarning(
+						`  • Could not fully clear old dotfile for '${formatText(as, { color: "magenta" })}' before override: ${err.message}. Proceeding anyway.`,
+					),
+				),
+			);
 
 			config[as] = isLocal
 				? {
@@ -86,8 +112,13 @@ export function removeEntry(name: string) {
 	return Effect.gen(function* () {
 		const config = yield* readConfig();
 
-		delete config[name];
-
-		yield* writeConfig(TOML.stringify(config));
+		if (config[name] !== undefined) {
+			delete config[name];
+			yield* writeConfig(TOML.stringify(config));
+		} else {
+			yield* Effect.logWarning(
+				`Config entry '${name}' not found for removal. No change made to config.`,
+			);
+		}
 	});
 }
