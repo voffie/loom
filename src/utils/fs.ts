@@ -36,12 +36,9 @@ export function addLocalEntry(source: string, as: string) {
 	const oldPath = path.resolve(HOME, source);
 	const newPath = path.join(DOTFILES_ROOT, as);
 
-	return Effect.gen(function* () {
-		yield* Effect.tryPromise({
-			try: () => fs.rename(oldPath, newPath),
-			catch: (cause) =>
-				new MoveEntryError({ from: oldPath, to: newPath, cause }),
-		});
+	return Effect.tryPromise({
+		try: () => fs.rename(oldPath, newPath),
+		catch: (cause) => new MoveEntryError({ from: oldPath, to: newPath, cause }),
 	});
 }
 
@@ -71,11 +68,9 @@ export function removeDotfileEntry(name: string) {
 		);
 	}
 
-	return Effect.gen(function* () {
-		yield* Effect.tryPromise({
-			try: () => fs.rm(entryPath, { recursive: true, force: true }),
-			catch: (cause) => new RemoveEntryError({ path: entryPath, cause }),
-		});
+	return Effect.tryPromise({
+		try: () => fs.rm(entryPath, { recursive: true, force: true }),
+		catch: (cause) => new RemoveEntryError({ path: entryPath, cause }),
 	});
 }
 

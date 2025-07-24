@@ -59,7 +59,7 @@ function execute() {
 					yield* Effect.logError(
 						`Failed to weave root directory: ${err.cause}`,
 					);
-					yield* Effect.fail(err);
+					return yield* Effect.fail(err);
 				}),
 			),
 		);
@@ -75,7 +75,7 @@ function execute() {
 			Effect.catchTag("WriteFileError", (err) =>
 				Effect.gen(function* () {
 					yield* Effect.logError(`Failed to spin config file: ${err.message}`);
-					yield* Effect.fail(err);
+					return yield* Effect.fail(err);
 				}),
 			),
 		);

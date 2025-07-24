@@ -26,7 +26,9 @@ export function readConfig() {
 		);
 
 		const parsed = TOML.parse(contents.toString());
-		return yield* Schema.decodeUnknown(LoomConfigSchema)(parsed).pipe(
+		return yield* Schema.decodeUnknown(Schema.mutable(LoomConfigSchema))(
+			parsed,
+		).pipe(
 			Effect.tapError((_) =>
 				Effect.logError(
 					"Couldn't parse config file. File content is malformed",
@@ -37,11 +39,9 @@ export function readConfig() {
 }
 
 function writeConfig(config: string) {
-	return Effect.gen(function* () {
-		yield* Effect.tryPromise({
-			try: () => fs.writeFile(CONFIG_PATH, config),
-			catch: (cause) => new WriteFileError({ path: CONFIG_PATH, cause }),
-		});
+	return Effect.tryPromise({
+		try: () => fs.writeFile(CONFIG_PATH, config),
+		catch: (cause) => new WriteFileError({ path: CONFIG_PATH, cause }),
 	});
 }
 

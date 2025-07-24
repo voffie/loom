@@ -49,7 +49,7 @@ function execute(source: string) {
 						`Failed to unweave pattern '${formatText(source, { color: "magenta" })}' from config: ${err.message}. ` +
 							`This is a critical error; your config might be corrupted.`,
 					);
-					yield* Effect.fail(err);
+					return yield* Effect.fail(err);
 				}),
 			),
 		);

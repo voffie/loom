@@ -1,5 +1,5 @@
 import { Command } from "@effect/cli";
-import { Effect, Logger } from "effect";
+import { Effect, Layer, Logger } from "effect";
 import { NodeContext, NodeRuntime } from "@effect/platform-node";
 import { logger } from "./utils/logger";
 
@@ -27,7 +27,6 @@ const cli = Command.run(loomCommand, {
 });
 
 cli(process.argv).pipe(
-	Effect.provide(customLoggerLayer),
-	Effect.provide(NodeContext.layer),
+	Effect.provide(Layer.merge(NodeContext.layer, customLoggerLayer)),
 	NodeRuntime.runMain({ disablePrettyLogger: true }),
 );
