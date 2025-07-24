@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import { Prompt } from "@effect/cli";
 import * as TOML from "@iarna/toml";
 import fs from "node:fs/promises";
@@ -10,16 +10,29 @@ import {
 	WriteFileError,
 } from "../errors";
 import { formatText } from "./logger";
-import type { LoomConfig } from "../types";
+import { LoomConfigSchema } from "../types";
 
 export function readConfig() {
 	return Effect.gen(function* () {
 		const contents = yield* Effect.tryPromise({
 			try: () => fs.readFile(CONFIG_PATH),
 			catch: (cause) => new ReadFileError({ path: CONFIG_PATH, cause }),
-		});
+		}).pipe(
+			Effect.tapError((_) =>
+				Effect.logError(
+					"Unable to locate Loom config file. Run 'loom init' to initialize Loom",
+				),
+			),
+		);
 
-		return TOML.parse(contents.toString()) as LoomConfig;
+		const parsed = TOML.parse(contents.toString());
+		return yield* Schema.decodeUnknown(LoomConfigSchema)(parsed).pipe(
+			Effect.tapError((_) =>
+				Effect.logError(
+					"Couldn't parse config file. File content is malformed",
+				),
+			),
+		);
 	});
 }
 
@@ -48,48 +61,41 @@ export function writeEntry(source: string, as: string, isLocal: boolean) {
 		} else {
 			const override = yield* Prompt.run(
 				Prompt.select({
-					message: `
-A configuration entry for '${formatText(as, { color: "magenta", bold: true })}' already exists.
-${formatText("WARNING", { color: "yellow", bold: true })}: Proceeding will replace the existing entry and unlink its current target.
-What would you like to do?`, // Clearer question
+					message: `A entry for '${formatText(as, { color: "magenta", bold: true })}' already exists. What would you like to do?`,
 					choices: [
 						{
-							title: formatText("Override (replace existing entry)", {
+							title: formatText("Override", {
 								color: "red",
 								bold: true,
 							}),
-							value: "y",
+							value: "override",
+							description: "Replace existing entry",
 						},
 						{
-							title: formatText("Cancel (keep current entry)", {
+							title: formatText("Cancel", {
 								color: "cyan",
 								bold: true,
 							}),
-							value: "n",
+							value: "cancel",
+							description: "Keep current entry",
 						},
 					],
 				}),
 			);
 
-			if (override === "n") {
-				yield* Effect.logInfo(
-					formatText(`Action cancelled. Entry '${as}' was not updated.`, {
-						color: "yellow",
-						bold: true,
-					}),
-				);
+			if (override === "cancel") {
 				return yield* Effect.fail(new UserDeniedOverrideError());
 			}
 
 			yield* removeDotfileEntry(as).pipe(
 				Effect.tap(() =>
 					Effect.logInfo(
-						`  • Cleared existing dotfile for '${formatText(as, { color: "magenta" })}' before override.`,
+						`Cleared existing dotfile for '${formatText(as, { color: "magenta" })}' before override.`,
 					),
 				),
 				Effect.catchAll((err) =>
 					Effect.logWarning(
-						`  • Could not fully clear old dotfile for '${formatText(as, { color: "magenta" })}' before override: ${err.message}. Proceeding anyway.`,
+						`Could not fully clear old dotfile for '${formatText(as, { color: "magenta" })}' before override: ${err.message}. Proceeding anyway.`,
 					),
 				),
 			);

@@ -9,20 +9,17 @@ export const init = Command.make("init", {}, () => execute());
 
 function execute() {
 	return Effect.gen(function* () {
-		yield* Effect.logInfo(
-			formatText(
-				`
+		globalThis.console.log(
+			`
 ██       ██████   ██████  ███    ███
 ██      ██    ██ ██    ██ ████  ████
 ██      ██    ██ ██    ██ ██ ████ ██
 ██      ██    ██ ██    ██ ██  ██  ██
 ███████  ██████   ██████  ██      ██
     `,
-				{ color: "blue", bold: true },
-			),
 		);
 
-		yield* Effect.logInfo("• Preparing the loom for your dotfiles...");
+		yield* Effect.logInfo("Preparing the loom for your dotfiles...");
 
 		const rootExists = yield* Effect.tryPromise({
 			try: () =>
@@ -44,13 +41,13 @@ function execute() {
 
 		if (rootExists && configExists) {
 			yield* Effect.logWarning(
-				"• Skipping initialization: Loom is already spun.",
+				"Skipping initialization: Loom is already spun.",
 			);
 			return;
 		}
 
 		yield* Effect.logInfo(
-			`• Weaving root directory at ${formatText(DOTFILES_ROOT, { color: "magenta" })}`,
+			`Weaving root directory at ${formatText(DOTFILES_ROOT, { color: "magenta" })}`,
 		);
 
 		yield* Effect.tryPromise({
@@ -60,7 +57,7 @@ function execute() {
 			Effect.catchTag("MakeDirectoryError", (err) =>
 				Effect.gen(function* () {
 					yield* Effect.logError(
-						`✗ Failed to weave root directory: ${err.cause}`,
+						`Failed to weave root directory: ${err.cause}`,
 					);
 					yield* Effect.fail(err);
 				}),
@@ -68,11 +65,7 @@ function execute() {
 		);
 
 		yield* Effect.logInfo(
-			formatText("✓ Root directory woven.", { color: "green", bold: true }),
-		);
-
-		yield* Effect.logInfo(
-			`• Spinning config file at ${formatText(CONFIG_PATH, { color: "magenta" })}`,
+			`Spinning config file at ${formatText(CONFIG_PATH, { color: "magenta" })}`,
 		);
 
 		yield* Effect.tryPromise({
@@ -81,21 +74,15 @@ function execute() {
 		}).pipe(
 			Effect.catchTag("WriteFileError", (err) =>
 				Effect.gen(function* () {
-					yield* Effect.logError(
-						`✗ Failed to spin config file: ${err.message}`,
-					);
+					yield* Effect.logError(`Failed to spin config file: ${err.message}`);
 					yield* Effect.fail(err);
 				}),
 			),
 		);
 
 		yield* Effect.logInfo(
-			formatText("✓ Config file spun.", { color: "green", bold: true }),
-		);
-
-		yield* Effect.logInfo(
 			formatText(
-				`\nLoom has been successfully initialized at: ${formatText(DOTFILES_ROOT, { color: "magenta" })}`,
+				`Loom has been successfully initialized at: ${formatText(DOTFILES_ROOT, { color: "magenta" })}`,
 				{ color: "green", bold: true },
 			),
 		);

@@ -6,36 +6,31 @@ import { EXEC } from "../utils/exec";
 import { ExecCommandError } from "../errors";
 import path from "node:path";
 import { formatText } from "../utils/logger";
+import { createOperationReporter } from "../utils/reporting";
+import { ensureGitAvailable } from "../utils/git";
 
 export const update = Command.make("update", {}, () => execute());
 
 function execute() {
 	return Effect.gen(function* () {
-		yield* Effect.logInfo(
-			formatText(
-				`
-┌─────────────────────────────────────────┐
-│               Loom Update               │
-└─────────────────────────────────────────┘`,
-				{ bold: true, color: "blue" },
-			) + "\n",
-		);
-
-		yield* Effect.logInfo("• Preparing to mend Git-managed patterns...");
+		yield* ensureGitAvailable;
+		yield* Effect.logInfo("Preparing to mend Git-managed patterns...");
+		const reporter = createOperationReporter({
+			mended: "Mended",
+			skipped: "Skipped",
+			snags: "Snags",
+			operationType: "Mending",
+		});
 
 		const configEntries = yield* readConfig();
 		const dotfilesEntries = yield* getDotfilesEntries();
-
-		let updatedCount = 0;
-		let skippedCount = 0;
-		let errorCount = 0;
 
 		for (const [entry, data] of Object.entries(configEntries)) {
 			if (dotfilesEntries.includes(entry) && data.source?.trim()) {
 				const entryPath = path.resolve(DOTFILES_ROOT, entry);
 
 				yield* Effect.logInfo(
-					`  • Mending pattern: ${formatText(entry, { color: "magenta" })}...`,
+					`Mending pattern: ${formatText(entry, { color: "magenta" })}...`,
 				);
 
 				yield* Effect.tryPromise({
@@ -46,67 +41,31 @@ function execute() {
 							cause,
 						}),
 				}).pipe(
-					Effect.tap(() =>
-						Effect.gen(function* () {
-							yield* Effect.logInfo(
-								formatText(
-									`    ✓ Pattern '${formatText(entry, { color: "magenta" })}' mended.`,
-									{ color: "green", bold: true },
-								),
-							);
-							updatedCount++;
-						}),
-					),
-					Effect.catchAll((err) =>
-						Effect.gen(function* () {
-							yield* Effect.logError(
-								`    ✗ Snag detected while mending '${formatText(entry, { color: "magenta" })}': ${err.message}`,
-							);
-							errorCount++;
-						}),
-					),
+					Effect.tap(() => {
+						reporter.increment("mended");
+						return Effect.logInfo(
+							formatText(
+								`Pattern '${formatText(entry, { color: "magenta" })}' mended.`,
+								{ color: "green", bold: true },
+							),
+						);
+					}),
+
+					Effect.catchAll((err) => {
+						reporter.increment("snags");
+						return Effect.logError(
+							`Snag detected while mending '${formatText(entry, { color: "magenta" })}': ${err.message}`,
+						);
+					}),
 				);
 			} else {
 				yield* Effect.logInfo(
-					`  • Skipping '${formatText(entry, { color: "magenta" })}': not a Git-managed pattern or missing dotfile.`,
+					`Skipping '${formatText(entry, { color: "magenta" })}': not a Git-managed pattern or missing dotfile.`,
 				);
-				skippedCount++;
+				reporter.increment("skipped");
 			}
 		}
 
-		yield* Effect.logInfo(
-			formatText(
-				`\n─────────────────────────────────────────\nMending Report:`,
-				{ bold: true, color: "blue" },
-			),
-		);
-
-		yield* Effect.logInfo(
-			formatText(`✓ ${updatedCount} patterns successfully mended.`, {
-				color: "green",
-				bold: true,
-			}),
-		);
-
-		if (errorCount > 0) {
-			yield* Effect.logError(`✗ ${errorCount} snags detected.`);
-		}
-
-		if (skippedCount > 0) {
-			yield* Effect.logWarning(`• ${skippedCount} patterns skipped.`);
-		}
-
-		if (errorCount === 0) {
-			yield* Effect.logInfo(
-				formatText("\nAll active Git patterns are up to date.", {
-					color: "green",
-					bold: true,
-				}),
-			);
-		} else {
-			yield* Effect.logError(
-				"\nSome patterns could not be mended. Please review the snags above.",
-			);
-		}
+		yield* reporter.logSummary();
 	});
 }

@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Effect, Either } from "effect";
 import { Command } from "@effect/cli";
 import { readConfig } from "../utils/config";
 import { formatText } from "../utils/logger";
@@ -10,125 +10,84 @@ import {
 	symlinkEntry,
 	unlinkEntry,
 } from "../utils/fs";
+import { createOperationReporter } from "../utils/reporting";
 
 export const link = Command.make("link", {}, () => execute());
 
 function execute() {
 	return Effect.gen(function* () {
-		yield* Effect.logInfo(
-			formatText(
-				`
-┌─────────────────────────────────────────┐
-│               Loom Link                 │
-└─────────────────────────────────────────┘`,
-				{ bold: true, color: "blue" },
-			) + "\n",
-		);
-
-		yield* Effect.logInfo("• Preparing to weave symlinks...");
+		yield* Effect.logInfo("Preparing to weave symlinks...");
+		const reporter = createOperationReporter({
+			woven: "Woven",
+			snags: "Snags",
+			skip: "Skipped",
+			operationType: "Threads",
+		});
 
 		const configEntries = yield* readConfig();
 		const dotfilesEntries = yield* getDotfilesEntries();
 
-		let successCount = 0;
-		let warningCount = 0;
-		let errorCount = 0;
-
 		for (const [entry, data] of Object.entries(configEntries)) {
-			if (dotfilesEntries.includes(entry) && data.target.trim()) {
-				const pointer = path.resolve(DOTFILES_ROOT, entry);
-				const symlink = data.target.trim();
+			if (!dotfilesEntries.includes(entry) || !data.target.trim()) {
+				yield* Effect.logWarning(
+					`Skipping '${formatText(entry, { color: "magenta" })}': missing dotfile or invalid target pattern.`,
+				);
+				reporter.increment("skip");
+				continue;
+			}
 
-				yield* Effect.logInfo(
-					`  • Processing thread: ${formatText(entry, { color: "magenta" })}`,
+			const pointer = path.resolve(DOTFILES_ROOT, entry);
+			const symlink = data.target.trim();
+
+			yield* Effect.logInfo(
+				`Processing thread: ${formatText(entry, { color: "magenta" })}`,
+			);
+
+			const symlinkExists = yield* Effect.tryPromise({
+				try: () =>
+					fs
+						.lstat(symlink)
+						.then(() => true)
+						.catch(() => false),
+				catch: () => false,
+			});
+
+			if (symlinkExists) {
+				yield* Effect.logWarning(
+					`Existing symlink found at ${formatText(symlink, { color: "magenta" })}. Unweaving...`,
 				);
 
-				const symlinkExists = yield* Effect.tryPromise({
-					try: () =>
-						fs
-							.lstat(symlink)
-							.then(() => true)
-							.catch(() => false),
-					catch: () => false,
-				});
+				const unlinkResult = yield* unlinkEntry(symlink).pipe(Effect.either);
 
-				if (symlinkExists) {
-					yield* Effect.logWarning(
-						`    • Existing symlink found at ${formatText(symlink, { color: "magenta" })}. Unraveling...`,
+				if (Either.isLeft(unlinkResult)) {
+					yield* Effect.logError(
+						`Failed to unweave existing symlink for ${formatText(entry, { color: "magenta" })}: ${unlinkResult.left.message}`,
 					);
-
-					yield* unlinkEntry(symlink).pipe(
-						Effect.catchAll((err) =>
-							Effect.gen(function* () {
-								yield* Effect.logError(
-									`    ✗ Failed to unravel existing symlink for ${formatText(entry, { color: "magenta" })}: ${err.message}`,
-								);
-								errorCount++;
-							}),
-						),
-					);
+					reporter.increment("snags");
+					continue;
 				}
+			}
 
-				yield* symlinkEntry(pointer, symlink).pipe(
-					Effect.tap(() =>
-						Effect.logInfo(
-							formatText(
-								`    ✓ Woven symlink: ${formatText(pointer, { color: "magenta" })} -> ${formatText(symlink, { color: "magenta" })}`,
-								{ color: "green", bold: true },
-							),
-						),
-					),
-					Effect.tap(() => Effect.sync(() => successCount++)),
-					Effect.catchAll((err) =>
-						Effect.gen(function* () {
-							yield* Effect.logError(
-								`    ✗ Failed to weave symlink for '${formatText(entry, { color: "magenta" })}': ${err.message}`,
-							);
-							errorCount++;
-						}),
+			const symlinkResult = yield* symlinkEntry(pointer, symlink).pipe(
+				Effect.either,
+			);
+
+			if (Either.isRight(symlinkResult)) {
+				reporter.increment("woven");
+				yield* Effect.logInfo(
+					formatText(
+						`Woven symlink: ${formatText(pointer, { color: "magenta" })} -> ${formatText(symlink, { color: "magenta" })}`,
+						{ color: "green", bold: true },
 					),
 				);
 			} else {
-				yield* Effect.logWarning(
-					`  • Skipping '${formatText(entry, { color: "magenta" })}': missing dotfile or invalid target pattern.`,
+				reporter.increment("snags");
+				yield* Effect.logError(
+					`Failed to weave symlink for '${formatText(entry, { color: "magenta" })}': ${symlinkResult.left.message}`,
 				);
-				warningCount++;
 			}
 		}
 
-		yield* Effect.logInfo(
-			formatText(
-				`\n─────────────────────────────────────────\nWeaving Report:`,
-				{ bold: true, color: "blue" },
-			),
-		);
-
-		yield* Effect.logInfo(
-			formatText(`✓ ${successCount} threads successfully woven.`, {
-				color: "green",
-				bold: true,
-			}),
-		);
-
-		if (errorCount > 0) {
-			yield* Effect.logError(`✗ ${errorCount} snags detected.`);
-		}
-
-		if (warningCount > 0) {
-			yield* Effect.logWarning(`• ${warningCount} patterns skipped.`);
-		}
-
-		if (errorCount === 0) {
-			yield* Effect.logInfo(
-				formatText("\nAll active patterns linked.", {
-					color: "green",
-					bold: true,
-				}),
-			);
-		} else {
-			yield* Effect.logError(
-				"\nSome patterns could not be linked. Please review the snags above.",
-			);
-		}
+		yield* reporter.logSummary();
 	});
 }

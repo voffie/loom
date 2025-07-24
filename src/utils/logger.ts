@@ -62,5 +62,5 @@ const getStyleForLevel = (logLevel: LogLevel.LogLevel) => {
 export const logger = Logger.make(({ logLevel, message }) => {
 	const stringifiedMessage = String(message);
 	const style = getStyleForLevel(logLevel);
-	console.log(style(stringifiedMessage));
+	globalThis.console.log(style(`[${logLevel.label}]`), stringifiedMessage);
 });
