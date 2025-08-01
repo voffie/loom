@@ -17,6 +17,11 @@ export function createOperationReporter<T extends Record<string, string>>(
 
 		logSummary: () => {
 			const total = Object.values(counters).reduce((a, b) => a + b, 0);
+
+			if (total === 0) {
+				return Effect.logInfo(`${operationType}: No operations performed.`);
+			}
+
 			const parts = Object.entries(counterLabels).map(
 				([key, label]) => `${label}: ${counters[key]}`,
 			);
