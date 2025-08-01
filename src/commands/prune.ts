@@ -1,77 +1,123 @@
-import { Console, Effect } from "effect";
+import { Effect, Either } from "effect";
 import { Command, Prompt } from "@effect/cli";
 import { getDotfilesEntries, removeDotfileEntry } from "../utils/fs";
 import { readConfig, writeEntry } from "../utils/config";
-import { formatText, LogStyles } from "../utils/log";
+import { formatText } from "../utils/logger";
 import { DOTFILES_ROOT } from "../utils/fs";
+import { createOperationReporter } from "../utils/reporting";
 
 export const prune = Command.make("prune", {}, () => execute());
 
 function execute() {
 	return Effect.gen(function* () {
+		yield* Effect.logInfo(
+			`Checking for unmanaged patterns in ${formatText(DOTFILES_ROOT, { color: "magenta" })}...`,
+		);
+		const reporter = createOperationReporter({
+			removed: "Removed",
+			kept: "Kept",
+			written: "Written",
+			operationType: "Scanned",
+		});
+
 		const dotfilesEntries = yield* getDotfilesEntries();
+		const configEntries = yield* readConfig();
 
 		if (dotfilesEntries.length === 0) {
-			return yield* Console.log(
-				LogStyles.warning(`No dotfile entries found in ${DOTFILES_ROOT}`),
+			return yield* Effect.logWarning(
+				`No dotfile patterns found in ${formatText(DOTFILES_ROOT, { color: "magenta" })} to prune.`,
 			);
 		}
 
-		yield* Console.log(
-			formatText("Processing dotfile entries...", { bold: true }),
-		);
-		yield* Effect.forEach(dotfilesEntries, handleEntry);
-	});
-}
+		yield* Effect.logInfo("Processing each dotfile pattern");
 
-function handleEntry(entry: string) {
-	return Effect.gen(function* () {
-		const configEntries = yield* readConfig();
-		if (configEntries[entry] === undefined) {
-			const option = yield* Prompt.run(
-				Prompt.text({
-					message:
-						`Found: '${formatText(entry, { color: "magenta" })}', but no config entry!\n\nWhat would you like to do?\n` +
-						`${LogStyles.error("[r] Remove")}: Permanently delete '${entry}' from ~/.dotfiles\n` +
-						`${LogStyles.warning("[k] Keep")}: Leave it alone and do nothing\n` +
-						`${LogStyles.success("[w] Write")}: Add a new config entry for '${entry}'\n\n` +
-						`Enter your choice (r/k/w):`,
-					validate: (value) =>
-						["r", "k", "w"].includes(value.toLowerCase())
-							? Effect.succeed(value.toLowerCase())
-							: Effect.fail("Invalid option. Please enter 'r', 'k', or 'w'."),
-				}),
-			);
+		for (const entry of dotfilesEntries) {
+			if (configEntries[entry] === undefined) {
+				const option = yield* Prompt.run(
+					Prompt.select({
+						message: `Found unmanaged pattern: '${formatText(entry, { color: "magenta" })}'.\nWhat would you like to do?`,
+						choices: [
+							{
+								title: formatText("Remove", { color: "red", bold: true }),
+								value: "remove",
+								description: `Permanently unweave '${entry}' from Loom's threads.`,
+							},
+							{
+								title: formatText("Keep", { color: "yellow", bold: true }),
+								value: "keep",
+								description: `Leave '${entry}' unmanaged but in place.`,
+							},
+							{
+								title: formatText("Weave", { color: "green", bold: true }),
+								value: "weave",
+								description: `Add '${entry}' as a new pattern to your config.`,
+							},
+						],
+					}),
+				);
 
-			if (option === "r") {
-				yield* Console.log(
-					LogStyles.error(`Removing '${entry}' from ~/.dotfiles...`),
-				);
-				yield* removeDotfileEntry(entry);
-				yield* Console.log(
-					LogStyles.success(
-						`Successfully removed the dotfile entry: '${entry}'\n`,
-					),
-				);
-			} else if (option === "k") {
-				yield* Console.log(
-					LogStyles.warning(`Keeping '${entry}'. It will remain unmanaged.\n`),
-				);
-			} else if (option === "w") {
-				yield* Console.log(`Writing new config entry for '${entry}'...`);
-				yield* writeEntry("", entry, true);
-				yield* Console.log(
-					LogStyles.success(
-						`Added a config entry for: '${entry}'.\n` +
-							"If this is a Git-managed directory, add a 'source' key to the entry using the following format:\n" +
-							'source = "[username]/[repo]"\n',
-					),
+				if (option === "remove") {
+					yield* Effect.logError(
+						`Unweaving '${formatText(entry, { color: "magenta" })}'...`,
+					);
+
+					const removeResult = yield* removeDotfileEntry(entry).pipe(
+						Effect.either,
+					);
+
+					if (Either.isLeft(removeResult)) {
+						yield* Effect.logError(
+							`Failed to unweave '${formatText(entry, { color: "magenta" })}': ${removeResult.left.message}`,
+						);
+						continue;
+					}
+
+					yield* Effect.logInfo(
+						formatText(
+							`Successfully unweaved pattern: '${formatText(entry, { color: "magenta" })}'.`,
+							{ color: "green", bold: true },
+						),
+					);
+					reporter.increment("removed");
+				} else if (option === "keep") {
+					yield* Effect.logWarning(
+						`Keeping '${formatText(entry, { color: "magenta" })}'. It remains an unmanaged thread.`,
+					);
+					reporter.increment("kept");
+				} else if (option === "weave") {
+					yield* Effect.logInfo(
+						`Weaving new config entry for '${formatText(entry, { color: "magenta" })}'...`,
+					);
+
+					const writeResult = yield* writeEntry("", entry, true).pipe(
+						Effect.either,
+					);
+
+					if (Either.isLeft(writeResult)) {
+						yield* Effect.logError(
+							`Failed to unweave '${formatText(entry, { color: "magenta" })}': ${writeResult.left.message}`,
+						);
+						continue;
+					}
+
+					yield* Effect.logInfo(
+						formatText(
+							`Added new pattern for: '${formatText(entry, { color: "magenta" })}'.\n` +
+								`${formatText("Tip: If this is a Git-managed pattern, update its source in the config file:", { color: "cyan" })}\n` +
+								`${formatText("[entry_name]", { color: "magenta" })} \n` +
+								`${formatText('source = "[username]/[repo]"', { color: "magenta" })}`,
+							{ color: "green", bold: true },
+						),
+					);
+					reporter.increment("written");
+				}
+			} else {
+				yield* Effect.logInfo(
+					`Pattern '${formatText(entry, { color: "magenta" })}' is already managed. Skipping.`,
 				);
 			}
-		} else {
-			yield* Console.log(
-				LogStyles.warning(`Entry '${entry}' already managed. Skipping.\n`),
-			);
 		}
+
+		yield* reporter.logSummary();
 	});
 }
