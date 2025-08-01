@@ -89,7 +89,6 @@ function execute() {
 						`Weaving new config entry for '${formatText(entry, { color: "magenta" })}'...`,
 					);
 
-					// TODO: Write propper error handling
 					const writeResult = yield* writeEntry("", entry, true).pipe(
 						Effect.either,
 					);
