@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Effect, Either } from "effect";
 import { Command, Prompt } from "@effect/cli";
 import { getDotfilesEntries, removeDotfileEntry } from "../utils/fs";
 import { readConfig, writeEntry } from "../utils/config";
@@ -61,7 +61,16 @@ function execute() {
 						`Unweaving '${formatText(entry, { color: "magenta" })}'...`,
 					);
 
-					yield* removeDotfileEntry(entry);
+					const removeResult = yield* removeDotfileEntry(entry).pipe(
+						Effect.either,
+					);
+
+					if (Either.isLeft(removeResult)) {
+						yield* Effect.logError(
+							`Failed to unweave '${formatText(entry, { color: "magenta" })}': ${removeResult.left.message}`,
+						);
+						continue;
+					}
 
 					yield* Effect.logInfo(
 						formatText(
@@ -80,7 +89,17 @@ function execute() {
 						`Weaving new config entry for '${formatText(entry, { color: "magenta" })}'...`,
 					);
 
-					yield* writeEntry("", entry, true);
+					// TODO: Write propper error handling
+					const writeResult = yield* writeEntry("", entry, true).pipe(
+						Effect.either,
+					);
+
+					if (Either.isLeft(writeResult)) {
+						yield* Effect.logError(
+							`Failed to unweave '${formatText(entry, { color: "magenta" })}': ${writeResult.left.message}`,
+						);
+						continue;
+					}
 
 					yield* Effect.logInfo(
 						formatText(
