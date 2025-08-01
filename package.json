@@ -15,13 +15,13 @@
     "@effect/cli": "^0.69.0",
     "@effect/platform-node": "^0.94.0",
     "@iarna/toml": "^2.2.5",
-    "effect": "^3.17.1"
+    "effect": "^3.17.4"
   },
   "devDependencies": {
-    "@effect/language-service": "^0.28.3",
+    "@effect/language-service": "^0.33.1",
     "@effect/vitest": "^0.25.0",
     "@types/node": "^24.1.0",
-    "typescript": "^5.8.3",
+    "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   }
 }
