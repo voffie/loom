@@ -1,0 +1,17 @@
+[nvim]
+source = "craftzdog/dotfiles-public"
+target = "/test-home/.config/nvim"
+
+[tmux]
+target = "/test-home/.tmux.conf"
+
+[zsh]
+source = "ohmyzsh/ohmyzsh"
+target = "/test-home/.zshrc"
+
+[git]
+target = "/test-home/.gitconfig"
+
+[alacritty]
+source = "alacritty/alacritty"
+target = "/test-home/.config/alacritty"

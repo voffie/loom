@@ -1,0 +1,6 @@
+[nvim
+target = "/test-home/.config/nvim"
+
+[tmux]
+target = missing quotes
+source = "incomplete
