@@ -7,6 +7,6 @@ export const ensureGitAvailable = Effect.tryPromise({
 	catch: (err) =>
 		new ValidationError({
 			raw_input: "git",
-			message: `Git is not available or not in PATH. Please install Git to use Git-based patterns. Error: ${err}`,
+			message: "Git is not available or not in PATH. Please install Git to use Git-based patterns.",
 		}),
 }).pipe(Effect.asVoid);
