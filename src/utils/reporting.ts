@@ -21,7 +21,7 @@ export function createOperationReporter<T extends Record<string, string>>(
 			if (total === 0) {
 				return Effect.logInfo(`${operationType}: No operations performed.`);
 			}
-
+      
 			const parts = Object.entries(counterLabels).map(
 				([key, label]) => `${label}: ${counters[key]}`,
 			);
